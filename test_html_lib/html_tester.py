@@ -103,7 +103,7 @@ class HtmlTester:
                 adjusted_line = str(adjusted_line) + " to " + str(adjusted_line + 1)
                 
                 # Replace the original line:column with adjusted line:column
-                adjusted_error = re.sub(pattern, f'line: {adjusted_line} column: {column}', error_message)
+                adjusted_error = re.sub(pattern, f'line: {adjusted_line}, column: {column}', error_message)
                 return adjusted_error
             else:
                 return error_message

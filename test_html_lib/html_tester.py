@@ -38,7 +38,7 @@ class HtmlTester:
     chart_library_script: Script
     current_snippet:str | None
     driver: webdriver.Chrome | None = None
-    max_wait_time_seconds: int = 2
+    max_wait_time_seconds: float = 2.0
     
     def get_file_content(self, file_name: str):
         with open(file_name, "r", encoding="utf-8") as file:

@@ -23,9 +23,9 @@ else:
     file_name = "html_snippet.html"
     
 if(len(command_line_args) > 2):
-    max_wait_time_seconds = int(command_line_args[2])
+    max_wait_time_seconds = float(command_line_args[2])
 else:
-    max_wait_time_seconds = 2
+    max_wait_time_seconds = 2.0
     
 print(f"using file: {file_name}, to test with max wait time of {max_wait_time_seconds} seconds")
 

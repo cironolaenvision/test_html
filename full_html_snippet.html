@@ -1,0 +1,173 @@
+<html><body><head><script src="dashboard_javascript.js" id="dashboard_javascript"></script><script src="chart.js" id="chart_library"></script><style> canvas { max-width: 300px; max-height: 300px; } </style></head><div><div class="dashboard-container">
+    <h1 class="dashboard-title">Dashboard de Reservas de Hotel</h1>
+    <p class="dashboard-subtitle">Visão geral das principais métricas e tendências dos últimos 30 dias</p>
+
+    <div class="metrics-grid">
+        <div class="metric-card primary">
+            <div class="metric-header">
+                <h3 class="metric-title">Total de Reservas</h3>
+            </div>
+            <p id="totalBookings" class="metric-value primary">4,308</p>
+        </div>
+
+        <div class="metric-card success">
+            <div class="metric-header">
+                <h3 class="metric-title">Receita Total (BRL)</h3>
+            </div>
+            <p id="totalRevenue" class="metric-value success">R$ 4.3M</p>
+        </div>
+
+        <div class="metric-card info">
+            <div class="metric-header">
+                <h3 class="metric-title">Duração Média da Estadia (Dias)</h3>
+            </div>
+            <p id="averageStayLength" class="metric-value info">2.4</p>
+        </div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="chart-container medium">
+            <div class="chart-header">
+                <h3 class="chart-title">Reservas de Hotel por Cidade</h3>
+                <p class="chart-subtitle">Top 5 cidades nos últimos 30 dias</p>
+            </div>
+            <canvas id="bookingsByCityChart" class="chart-canvas" width="1061" height="800"
+                style="display: block; box-sizing: border-box; height: 400px; width: 530px;"></canvas>
+        </div>
+
+        <div class="chart-container small">
+            <div class="chart-header">
+                <h3 class="chart-title">Reservas de Hotel por Status</h3>
+                <p class="chart-subtitle">Status das reservas nos últimos 30 dias</p>
+            </div>
+            <canvas id="bookingsByStatusChart" class="chart-canvas" width="1061" height="800"
+                style="display: block; box-sizing: border-box; height: 400px; width: 530px;"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadHotelDashboard() {
+        const sqlMetrics = "SELECT COUNT(Id) AS TotalBookings, SUM(TotalFareAmountBrl) AS TotalRevenue, AVG(LengthOfStay) AS AverageStayLength FROM BI_CaixaEconomica.HotelBookings WHERE DATE(Created) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 30 DAY)";
+        const sqlBookingsByCity = "SELECT CityName, COUNT(Id) AS BookingCount FROM BI_CaixaEconomica.HotelBookings WHERE DATE(Created) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 30 DAY) GROUP BY CityName ORDER BY BookingCount DESC LIMIT 5";
+        const sqlBookingsByStatus = "SELECT Status, COUNT(Id) AS BookingCount FROM BI_CaixaEconomica.HotelBookings WHERE DATE(Created) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 30 DAY) GROUP BY Status ORDER BY BookingCount DESC";
+
+        const metricsResult = await DashboardUtils.fetchData(sqlMetrics);
+        const cityResult = await DashboardUtils.fetchData(sqlBookingsByCity);
+        const statusResult = await DashboardUtils.fetchData(sqlBookingsByStatus);
+
+        // Populate Metric Cards
+        if (metricsResult.data.length > 0) {
+            const metrics = metricsResult.data[0];
+            document.getElementById('totalBookings').innerText = DashboardUtils.formatShortNumber(parseInt(metrics.TotalBookings));
+            document.getElementById('totalRevenue').innerText = DashboardUtils.formatCurrency(parseFloat(metrics.TotalRevenue), 'R$');
+            document.getElementById('averageStayLength').innerText = parseFloat(metrics.AverageStayLength).toFixed(1);
+        }
+
+        // Chart - Bookings by City
+        if (cityResult.data.length > 0) {
+
+            const cities = cityResult.data.map(row => row.cityName);
+            const bookingCounts = cityResult.data.map(row => parseInt(row.BookingCount, 10));
+            const ctxCity = document.getElementById('bookingsByCityChart').getContext('2d');
+            new Chart(ctxCity, {
+                type: 'bar',
+                data: {
+                    labels: cities, //cities,
+                    datasets: [{
+                        label: 'Número de Reservas',
+                        data: bookingCounts,
+                        backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Reservas de Hotel por Cidade (Últimos 30 Dias)',
+                            color: '#ffffff'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ffffff'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ffffff'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Chart - Bookings by Status
+        if (statusResult.data.length > 0) {
+            const statuses = statusResult.data.map(row => row.Status);
+            const statusCounts = statusResult.data.map(row => parseInt(row.BookingCount, 10));
+            const ctxStatus = document.getElementById('bookingsByStatusChart').getContext('2d');
+            new Chart(ctxStatus, {
+                type: 'bar',
+                data: {
+                    labels: statuses,
+                    datasets: [{
+                        label: 'Reservas por Status',
+                        data: statusCounts,
+                        backgroundColor: [
+                            'rgba(33, 150, 243, 0.6)', // Primary Blue
+                            'rgba(76, 175, 80, 0.6)',  // Success Green
+                            'rgba(244, 67, 54, 0.6)',  // Error Red
+                            'rgba(255, 193, 7, 0.6)',  // Warning Amber
+                            'rgba(156, 39, 176, 0.6)'  // Purple
+                        ],
+                        borderColor: [
+                            'rgba(33, 150, 243, 1)',
+                            'rgba(76, 175, 80, 1)',
+                            'rgba(244, 67, 54, 1)',
+                            'rgba(255, 193, 7, 1)',
+                            'rgba(156, 39, 176, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Reservas de Hotel por Status (Últimos 30 Dias)',
+                            color: '#ffffff'
+                        }
+                    }
+                }
+            });
+        }
+
+    }
+    loadHotelDashboard();
+</script></div></body></html>
